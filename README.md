@@ -1,6 +1,7 @@
 # AI--Examination-Surveillance
 
-[![CI - AI Examination Surveillance](https://github.com/kl2300033362/AI--Examination-Surveillance/actions/workflows/ci.yml/badge.svg)](https://github.com/kl2300033362/AI--Examination-Surveillance/actions/workflows/ci.yml)
+[![CI - AI Examination Surveillance](https://github.com/kl2300033362/AI--Examination-Surveillance/actions/workflows/main.yml/badge.svg)](https://github.com/kl2300033362/AI--Examination-Surveillance/actions/workflows/main.yml)
+
 
 AI Guardian is an automated, production-grade full-stack AI Online Exam Proctoring & Examination Surveillance Platform. It provides continuous video streaming, start-gated exam surveillance, real-time candidate verification, gaze tracking, multiple faces detection, electronic device detection, and date & time-stamped screenshot evidence recording.
 
