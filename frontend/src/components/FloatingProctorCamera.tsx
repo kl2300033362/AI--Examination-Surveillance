@@ -35,7 +35,7 @@ export const FloatingProctorCamera: React.FC<FloatingProctorCameraProps> = ({
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
     const saved = localStorage.getItem('proctor_cam_pos');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { return JSON.parse(saved); } catch {}
     }
     // Default to top-right edge with 24px margin
     return { x: window.innerWidth - 340, y: 24 };

@@ -62,7 +62,7 @@ export const ExamWarningToast: React.FC<ExamWarningToastProps> = ({
         osc.start();
         osc.stop(ctx.currentTime + 0.4);
       }
-    } catch (e) {
+    } catch {
       // Audio context might be restricted before interaction
     }
   };
