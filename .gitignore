@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Builds & Caches
+frontend/dist/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+logs/
+*.log
+
+# Database & Runtime outputs (keep schema / code, ignore local run DBs & temp captured data)
+data/database/*.db
+backend/data/database/*.db
+*.sqlite3
+*.db
+**/screenshots/*.jpg
+**/screenshots/*.jpeg
+**/screenshots/*.png
+!**/screenshots/.gitkeep
+!**/database/.gitkeep
+
+
+
+# OS / Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
