@@ -29,11 +29,11 @@ data/database/*.db
 backend/data/database/*.db
 *.sqlite3
 *.db
-**/screenshots/*.jpg
-**/screenshots/*.jpeg
-**/screenshots/*.png
-!**/screenshots/.gitkeep
-!**/database/.gitkeep
+data/screenshots/**
+!data/screenshots/.gitkeep
+backend/data/screenshots/**
+!backend/data/screenshots/.gitkeep
+
 
 
 

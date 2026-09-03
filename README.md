@@ -1,6 +1,9 @@
 # AI--Examination-Surveillance
 
+[![CI - AI Examination Surveillance](https://github.com/kl2300033362/AI--Examination-Surveillance/actions/workflows/ci.yml/badge.svg)](https://github.com/kl2300033362/AI--Examination-Surveillance/actions/workflows/ci.yml)
+
 AI Guardian is an automated, production-grade full-stack AI Online Exam Proctoring & Examination Surveillance Platform. It provides continuous video streaming, start-gated exam surveillance, real-time candidate verification, gaze tracking, multiple faces detection, electronic device detection, and date & time-stamped screenshot evidence recording.
+
 
 ## Architecture
 - **Backend:** FastAPI, OpenCV, MediaPipe (Face/Landmarks/Drowsiness/Head Pose), Ultralytics YOLOv8 (Objects), PyAudio, SQLite + SQLAlchemy.
@@ -43,8 +46,20 @@ SYSTEM_LOCK_ENABLED=false
 ```
 
 ## Running the Application
-You can use the provided `start.bat` script on Windows, or start them manually:
+### Option A: Using Quickstart Scripts
+- **Windows:** Double-click or run `start.bat`
+- **Linux / macOS:** Run `./start.sh`
 
+### Option B: Using Docker Compose
+Run the entire platform in a container with one command:
+```bash
+docker compose up --build
+```
+Access the application:
+- Candidate Exam & Proctor Dashboard: `http://localhost:5173`
+- AI Backend API & Documentation: `http://localhost:8000/docs`
+
+### Option C: Manual Launch
 **Terminal 1 (Backend):**
 ```bash
 cd backend
@@ -56,6 +71,12 @@ uvicorn main:app --reload
 cd frontend
 npm run dev
 ```
+
+## Continuous Integration & Testing
+GitHub Actions runs the test suite and builds the frontend on every push and pull request:
+- **Backend Job:** Tests with pytest, installs system libraries (`libgl1`, `portaudio19-dev`), and executes an automated health check boot test.
+- **Frontend Job:** Runs `oxlint` linter, compiles TypeScript, and uploads production artifacts.
+
 
 ## Security & Privacy
 - All logs and events are stored locally in the SQLite database (`data/database/`).

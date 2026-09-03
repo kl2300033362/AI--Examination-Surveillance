@@ -1,0 +1,15 @@
+services:
+  ai-examination-surveillance:
+    build: .
+    container_name: ai_examination_surveillance
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+    environment:
+      - ENVIRONMENT=production
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
