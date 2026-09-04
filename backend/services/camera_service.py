@@ -59,8 +59,21 @@ class CameraService:
         self.thread.start()
         logger.info("Camera service started.")
 
+    def update_client_frame(self, frame: np.ndarray):
+        """Allows client browsers to push live webcam frames into the AI pipeline."""
+        if frame is not None and frame.size > 0:
+            with self.lock:
+                self.current_frame = frame
+                self.last_client_frame_time = time.time()
+                self.using_synthetic = False
+
     def _capture_loop(self):
         while self.is_running:
+            # If client browser is actively pushing real webcam frames, preserve them
+            if hasattr(self, 'last_client_frame_time') and (time.time() - self.last_client_frame_time < 3.0):
+                time.sleep(0.04)
+                continue
+
             if not self.using_synthetic and self.cap is not None and self.cap.isOpened():
                 ret, frame = self.cap.read()
                 if ret:

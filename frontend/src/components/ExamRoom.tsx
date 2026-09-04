@@ -14,6 +14,7 @@ import {
   Play
 } from 'lucide-react';
 import clsx from 'clsx';
+import { WebcamView } from './WebcamView';
 
 interface Question {
   id: number;
@@ -140,6 +141,7 @@ interface ExamRoomProps {
   isMonitoring: boolean;
   onStart: () => void;
   onStop: () => void;
+  webcamStream?: MediaStream | null;
 }
 
 export const ExamRoom: React.FC<ExamRoomProps> = ({ 
@@ -147,7 +149,8 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({
   backendUrl, 
   isMonitoring, 
   onStart, 
-  onStop 
+  onStop,
+  webcamStream 
 }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
@@ -254,7 +257,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({
         /* ================= PRE-EXAM VERIFICATION & START CHAMBER ================= */
         <div className="space-y-6">
           {/* Top Banner Alert */}
-          <div className="glass-panel p-4 bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-indigo-950/80 border-blue-500/40 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+          <div className="glass-panel p-4 bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-indigo-950/80 border-blue-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
                 <Sparkles size={20} />
@@ -266,7 +269,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({
                     Video Streaming Auto-Started & Live
                   </span>
                 </div>
-                <h2 className="text-lg font-black text-white mt-0.5">
+                <h2 className="text-base sm:text-lg font-black text-white mt-0.5">
                   Candidate Pre-Exam Chamber — Awaiting Start
                 </h2>
                 <p className="text-xs text-slate-300">
@@ -277,7 +280,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({
 
             <button
               onClick={onStart}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-600/30 hover:shadow-emerald-500/50 transition-all transform active:scale-95 flex items-center gap-2.5 ring-2 ring-emerald-400/40 animate-pulse shrink-0"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-600/30 hover:shadow-emerald-500/50 transition-all transform active:scale-95 flex items-center justify-center gap-2.5 ring-2 ring-emerald-400/40 animate-pulse shrink-0"
             >
               <Play size={18} className="fill-white" />
               START PROTECTED EXAM
@@ -303,33 +306,47 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({
 
                 {/* Video Monitor Frame */}
                 <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 shadow-2xl flex items-center justify-center">
-                  <img
-                    src={`${backendUrl}/api/monitoring/video_feed`}
-                    alt="Pre-exam live candidate stream"
+                  <WebcamView
+                    stream={webcamStream}
+                    fallbackUrl={`${backendUrl}/api/monitoring/video_feed`}
                     className="w-full h-full object-cover"
+                    alt="Pre-exam live candidate stream"
                   />
 
+                  {/* Big Interactive Click-to-Start Button Overlay */}
+                  <div 
+                    onClick={onStart}
+                    className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer group bg-black/40 hover:bg-black/25 transition-all p-4 text-center z-20"
+                  >
+                    <div className="bg-emerald-600 group-hover:bg-emerald-500 text-white px-7 py-3.5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-2xl shadow-emerald-600/50 flex items-center gap-2.5 ring-4 ring-emerald-400/40 transform group-hover:scale-105 transition-all active:scale-95 animate-pulse">
+                      <Play size={20} className="fill-white" />
+                      CLICK TO START AI SURVEILLANCE & EXAM
+                    </div>
+                    <span className="text-[11px] text-emerald-300 font-mono mt-2.5 bg-black/85 px-3.5 py-1.5 rounded-full border border-emerald-500/40 backdrop-blur-md">
+                      👆 Tap here to engage AI monitoring & begin exam questions
+                    </span>
+                  </div>
+
                   {/* On-Stream Live Badge */}
-                  <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-3 py-1 rounded-lg border border-slate-700/80 text-[10px] font-mono text-slate-300 flex items-center gap-1.5">
+                  <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-3 py-1 rounded-lg border border-slate-700/80 text-[10px] font-mono text-slate-300 flex items-center gap-1.5 z-10">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span>AUTOMATIC VIDEO FEED: LIVE</span>
                   </div>
 
                   {/* AI Surveillance Status Badge */}
-                  <div className="absolute top-3 right-3 bg-amber-950/80 backdrop-blur-md px-3 py-1 rounded-lg border border-amber-500/50 text-[10px] font-mono text-amber-300 font-bold">
+                  <div className="absolute top-3 right-3 bg-amber-950/80 backdrop-blur-md px-3 py-1 rounded-lg border border-amber-500/50 text-[10px] font-mono text-amber-300 font-bold z-10">
                     AI SURVEILLANCE: STANDBY (CLICK START)
                   </div>
-
-                  {/* Center Crosshair Framing Guide */}
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-30">
-                    <div className="w-48 h-64 border border-dashed border-emerald-400 rounded-3xl" />
-                  </div>
-
-                  {/* Bottom Stream Note */}
-                  <div className="absolute bottom-3 inset-x-3 bg-black/75 backdrop-blur-md p-2 rounded-lg border border-slate-700/80 text-[11px] text-center text-slate-300 font-mono">
-                    Ensure your face is clearly lit and centered within the framing guide before clicking START.
-                  </div>
                 </div>
+
+                {/* Prominent Full-Width Start Button below the Video */}
+                <button
+                  onClick={onStart}
+                  className="w-full mt-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white py-3.5 px-6 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 ring-2 ring-emerald-400/40 transition active:scale-98 animate-pulse"
+                >
+                  <Play size={18} className="fill-white" />
+                  START PROTECTED EXAM & ACTIVATE AI SURVEILLANCE
+                </button>
               </div>
 
               {/* Camera Diagnostics */}

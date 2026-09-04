@@ -1,14 +1,25 @@
 import React, { useState } from 'react';
-import { Camera, Shield, Sparkles, Video, AlertCircle } from 'lucide-react';
+import { Camera, Shield, Sparkles, Video, AlertCircle, Play } from 'lucide-react';
 import clsx from 'clsx';
+import { WebcamView } from './WebcamView';
 
 interface LiveMonitoringProps {
   isMonitoring: boolean;
   systemStatus: any;
   backendUrl: string;
+  onStart?: () => void;
+  onStop?: () => void;
+  webcamStream?: MediaStream | null;
 }
 
-export const LiveMonitoring: React.FC<LiveMonitoringProps> = ({ isMonitoring, systemStatus, backendUrl }) => {
+export const LiveMonitoring: React.FC<LiveMonitoringProps> = ({ 
+  isMonitoring, 
+  systemStatus, 
+  backendUrl,
+  onStart,
+  onStop,
+  webcamStream
+}) => {
   const [streamError, setStreamError] = useState(false);
 
   return (
@@ -35,7 +46,23 @@ export const LiveMonitoring: React.FC<LiveMonitoringProps> = ({ isMonitoring, sy
         </div>
 
         <div className="flex items-center gap-3 text-xs font-mono">
-          <span className="text-slate-400">Stream: <span className="text-emerald-400 font-bold">LIVE 30FPS</span></span>
+          {!isMonitoring && onStart && (
+            <button
+              onClick={onStart}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition active:scale-95 animate-pulse font-sans"
+            >
+              <Play size={13} className="fill-white" /> Start AI Surveillance
+            </button>
+          )}
+          {isMonitoring && onStop && (
+            <button
+              onClick={onStop}
+              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition active:scale-95 font-sans"
+            >
+              Stop Surveillance
+            </button>
+          )}
+          <span className="text-slate-400 hidden sm:inline">Stream: <span className="text-emerald-400 font-bold">LIVE 30FPS</span></span>
         </div>
       </div>
       
@@ -48,8 +75,9 @@ export const LiveMonitoring: React.FC<LiveMonitoringProps> = ({ isMonitoring, sy
             <p className="text-xs text-slate-500 mt-1">Starting camera pipeline at {backendUrl}</p>
           </div>
         ) : (
-          <img 
-            src={`${backendUrl}/api/monitoring/video_feed`} 
+          <WebcamView 
+            stream={webcamStream}
+            fallbackUrl={`${backendUrl}/api/monitoring/video_feed`} 
             alt="Live candidate camera feed"
             className="w-full h-full object-contain"
             onError={() => setStreamError(true)}

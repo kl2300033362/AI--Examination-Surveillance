@@ -106,6 +106,24 @@ async def simulate_event(event_data: dict):
     
     return {"status": "success", "event_type": event_type, "metadata": metadata}
 
+import base64
+import numpy as np
+import cv2
+from fastapi import UploadFile, File
+
+@router.post("/upload_frame")
+async def upload_frame(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if frame is not None:
+            camera_service.update_client_frame(frame)
+            return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    return {"status": "error", "message": "Failed to decode frame"}
+
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -114,7 +132,21 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             cmd = json.loads(data)
-            if cmd.get("action") == "test_alarm":
+            action = cmd.get("action")
+            if action == "client_frame":
+                b64_data = cmd.get("image", "")
+                if "," in b64_data:
+                    b64_data = b64_data.split(",", 1)[1]
+                if b64_data:
+                    try:
+                        img_bytes = base64.b64decode(b64_data)
+                        nparr = np.frombuffer(img_bytes, np.uint8)
+                        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                        if frame is not None:
+                            camera_service.update_client_frame(frame)
+                    except Exception:
+                        pass
+            elif action == "test_alarm":
                 from backend.services.alarm_service import alarm_service
                 alarm_service.play_alarm(3)
     except WebSocketDisconnect:

@@ -23,6 +23,7 @@ interface DashboardProps {
   onStart: () => void;
   onStop: () => void;
   backendUrl: string;
+  webcamStream?: MediaStream | null;
 }
 
 const StatCard = ({ title, value, icon, statusClass = 'text-slate-200', subtitle }: any) => (
@@ -43,7 +44,7 @@ const StatCard = ({ title, value, icon, statusClass = 'text-slate-200', subtitle
   </div>
 );
 
-export const Dashboard: React.FC<DashboardProps> = ({ status, isMonitoring, onStart, onStop, backendUrl }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ status, isMonitoring, onStart, onStop, backendUrl, webcamStream }) => {
 
   const simulateViolation = (eventType: string, metadata: any = {}) => {
     fetch(`${backendUrl}/api/monitoring/simulate`, {
@@ -141,7 +142,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ status, isMonitoring, onSt
         
         {/* Left Col - Video Feed */}
         <div className="lg:col-span-2">
-          <LiveMonitoring isMonitoring={isMonitoring} systemStatus={status} backendUrl={backendUrl} />
+          <LiveMonitoring 
+            isMonitoring={isMonitoring} 
+            systemStatus={status} 
+            backendUrl={backendUrl} 
+            onStart={onStart} 
+            onStop={onStop} 
+            webcamStream={webcamStream} 
+          />
         </div>
         
         {/* Right Col - Core Strike Tally & Critical Stat */}

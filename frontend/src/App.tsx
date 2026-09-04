@@ -17,7 +17,8 @@ import {
   Shield,
   Camera,
   Wifi,
-  WifiOff
+  WifiOff,
+  Play
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -76,7 +77,66 @@ const NavButton = ({ id, label, icon, badge, activeTab, onSelect }: NavButtonPro
 function App() {
   const [activeTab, setActiveTab] = useState('exam'); // Default to Candidate Exam Room
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const { lastEvent } = useWebSocket(WS_URL);
+  const { isConnected, lastEvent, sendMessage } = useWebSocket(WS_URL);
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+
+  // Initialize candidate browser webcam
+  useEffect(() => {
+    let streamInstance: MediaStream | null = null;
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 } },
+        audio: false
+      })
+      .then(stream => {
+        streamInstance = stream;
+        setWebcamStream(stream);
+      })
+      .catch(err => {
+        console.warn("Candidate webcam access declined or unavailable, using cloud simulated feed", err);
+      });
+    }
+
+    return () => {
+      if (streamInstance) {
+        streamInstance.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // Stream live webcam frames to backend AI pipeline via WebSocket
+  useEffect(() => {
+    if (!webcamStream || !isConnected) return;
+
+    const video = document.createElement('video');
+    video.srcObject = webcamStream;
+    video.muted = true;
+    video.playsInline = true;
+    video.play().catch(() => {});
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+
+    const intervalId = setInterval(() => {
+      if (video.readyState >= 2 && ctx) {
+        ctx.drawImage(video, 0, 0, 640, 480);
+        try {
+          const frameData = canvas.toDataURL('image/jpeg', 0.55);
+          sendMessage({ action: 'client_frame', image: frameData });
+        } catch {
+          // ignore transient frame capture errors
+        }
+      }
+    }, 300); // 3.3 FPS lightweight frame sync
+
+    return () => {
+      clearInterval(intervalId);
+      video.pause();
+      video.srcObject = null;
+    };
+  }, [webcamStream, isConnected, sendMessage]);
   
   // Aggregate status based on events and periodic fetching
   const [status, setStatus] = useState({
@@ -254,7 +314,7 @@ function App() {
         />
         
         {/* Main Application Header & Tab Bar */}
-        <header className="glass-panel p-3 flex flex-col md:flex-row items-center justify-between gap-4 border-slate-800/80 bg-slate-950/70">
+        <header className="glass-panel p-3 flex flex-col xl:flex-row items-center justify-between gap-4 border-slate-800/80 bg-slate-950/70">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
               <Shield size={22} />
@@ -270,51 +330,72 @@ function App() {
             </div>
           </div>
 
-          {/* Navigation Bar */}
-          <div className="flex items-center gap-1.5 flex-wrap bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
-            <NavButton 
-              id="exam" 
-              label="Candidate Exam Portal" 
-              icon={<GraduationCap size={16} />} 
-              badge="Active Test"
-              activeTab={activeTab}
-              onSelect={setActiveTab}
-            />
-            <NavButton 
-              id="dashboard" 
-              label="Proctor Conductor Center" 
-              icon={<LayoutDashboard size={16} />} 
-              activeTab={activeTab}
-              onSelect={setActiveTab}
-            />
-            <NavButton 
-              id="evidence" 
-              label="Evidence Archive" 
-              icon={<Camera size={16} />} 
-              activeTab={activeTab}
-              onSelect={setActiveTab}
-            />
-            <NavButton 
-              id="events" 
-              label="Incident Logs" 
-              icon={<List size={16} />} 
-              activeTab={activeTab}
-              onSelect={setActiveTab}
-            />
-            <NavButton 
-              id="analytics" 
-              label="Integrity Analytics" 
-              icon={<BarChart2 size={16} />} 
-              activeTab={activeTab}
-              onSelect={setActiveTab}
-            />
-            <NavButton 
-              id="settings" 
-              label="Settings" 
-              icon={<SettingsIcon size={16} />} 
-              activeTab={activeTab}
-              onSelect={setActiveTab}
-            />
+          {/* Quick AI Surveillance Toggle Button in Header */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {!isMonitoring ? (
+              <button
+                onClick={handleStart}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition active:scale-95 animate-pulse ring-2 ring-emerald-400/40"
+              >
+                <Play size={13} className="fill-white" />
+                <span>Start AI Surveillance</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleStop}
+                className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-red-600/30 transition active:scale-95 ring-2 ring-red-400/40"
+              >
+                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                <span>Stop Surveillance</span>
+              </button>
+            )}
+
+            {/* Navigation Bar */}
+            <div className="flex items-center gap-1.5 flex-wrap bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
+              <NavButton 
+                id="exam" 
+                label="Candidate Exam Portal" 
+                icon={<GraduationCap size={16} />} 
+                badge="Active Test"
+                activeTab={activeTab}
+                onSelect={setActiveTab}
+              />
+              <NavButton 
+                id="dashboard" 
+                label="Proctor Conductor Center" 
+                icon={<LayoutDashboard size={16} />} 
+                activeTab={activeTab}
+                onSelect={setActiveTab}
+              />
+              <NavButton 
+                id="evidence" 
+                label="Evidence Archive" 
+                icon={<Camera size={16} />} 
+                activeTab={activeTab}
+                onSelect={setActiveTab}
+              />
+              <NavButton 
+                id="events" 
+                label="Incident Logs" 
+                icon={<List size={16} />} 
+                activeTab={activeTab}
+                onSelect={setActiveTab}
+              />
+              <NavButton 
+                id="analytics" 
+                label="Integrity Analytics" 
+                icon={<BarChart2 size={16} />} 
+                activeTab={activeTab}
+                onSelect={setActiveTab}
+              />
+              <NavButton 
+                id="settings" 
+                label="Settings" 
+                icon={<SettingsIcon size={16} />} 
+                activeTab={activeTab}
+                onSelect={setActiveTab}
+              />
+            </div>
           </div>
         </header>
 
@@ -327,6 +408,7 @@ function App() {
               isMonitoring={isMonitoring}
               onStart={handleStart}
               onStop={handleStop}
+              webcamStream={webcamStream}
             />
           )}
 
@@ -337,6 +419,7 @@ function App() {
               onStart={handleStart} 
               onStop={handleStop}
               backendUrl={BACKEND_URL}
+              webcamStream={webcamStream}
             />
           )}
 
@@ -363,6 +446,9 @@ function App() {
         status={status} 
         isMonitoring={isMonitoring} 
         backendUrl={BACKEND_URL}
+        onStart={handleStart}
+        onStop={handleStop}
+        webcamStream={webcamStream}
       />
     </div>
   );

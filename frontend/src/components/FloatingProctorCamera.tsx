@@ -15,18 +15,25 @@ import {
   Smartphone,
   BookOpen
 } from 'lucide-react';
+import { WebcamView } from './WebcamView';
 import clsx from 'clsx';
 
 interface FloatingProctorCameraProps {
   status: any;
   isMonitoring: boolean;
   backendUrl: string;
+  onStart?: () => void;
+  onStop?: () => void;
+  webcamStream?: MediaStream | null;
 }
 
 export const FloatingProctorCamera: React.FC<FloatingProctorCameraProps> = ({
   status,
   isMonitoring,
-  backendUrl
+  backendUrl,
+  onStart,
+  onStop: _onStop,
+  webcamStream
 }) => {
   const [minimized, setMinimized] = useState(false);
   const [closed, setClosed] = useState(false);
@@ -214,13 +221,11 @@ export const FloatingProctorCamera: React.FC<FloatingProctorCameraProps> = ({
       {/* Camera Video Viewport */}
       {!minimized && (
         <div className="relative bg-black w-full h-44 overflow-hidden group">
-          <img 
-            src={`${backendUrl}/api/monitoring/video_feed`} 
-            alt="Candidate Live Stream" 
+          <WebcamView
+            stream={webcamStream}
+            fallbackUrl={`${backendUrl}/api/monitoring/video_feed`}
             className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
+            alt="Candidate Live Stream"
           />
 
           {/* AI Proctoring Live HUD Overlay */}
@@ -248,37 +253,54 @@ export const FloatingProctorCamera: React.FC<FloatingProctorCameraProps> = ({
                   <span className="bg-amber-950/90 border border-amber-500/80 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-lg">
                     ⚠️ CAM BLURRY
                   </span>
-                ) : (
-                  <span className="bg-emerald-950/90 border border-emerald-500/60 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-lg">
-                    <Shield size={10} /> 1 CANDIDATE (SECURE)
+                ) : null}
+
+                {/* Candidate Verified Tag */}
+                {isMonitoring && !isMultipleFaces && status.faceDetected !== false && (
+                  <span className="bg-emerald-950/90 border border-emerald-500/80 text-emerald-300 text-[9px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <Shield size={9} /> VERIFIED
                   </span>
                 )}
               </div>
 
-              {/* Warning Counter Pill */}
-              <div className={clsx(
-                "px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border shadow-lg",
-                status.total_warnings >= (status.max_warnings || 10) 
-                  ? "bg-red-950/90 border-red-500 text-red-300 animate-pulse" 
-                  : status.total_warnings > 0 
-                  ? "bg-amber-950/90 border-amber-500 text-amber-300" 
-                  : "bg-slate-900/80 border-slate-700 text-slate-300"
-              )}>
-                ⚡ {status.total_warnings || 0}/{status.max_warnings || 10} Warn
+              {/* Warnings Pill */}
+              <div className="flex items-center gap-1 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded border border-slate-700 text-[10px] font-mono">
+                <span className={status.total_warnings > 0 ? "text-amber-400 font-bold" : "text-slate-400"}>
+                  {status.total_warnings}/{status.max_warnings || 10} Warn
+                </span>
               </div>
             </div>
 
-            {/* Bottom HUD: Target crosshair corners */}
-            <div className="flex justify-between items-end text-[10px] font-mono text-slate-400 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md border border-slate-800">
-              <span className={clsx("flex items-center gap-1", isMonitoring ? "text-emerald-400" : "text-blue-400")}>
-                <Sparkles size={10} /> {isMonitoring ? "AI PROCTOR ON" : "AI IN STANDBY"}
+            {/* Bottom Feed Status */}
+            <div className="flex justify-between items-end text-[10px] font-mono">
+              <span className="bg-black/70 px-1.5 py-0.5 rounded text-slate-300">
+                {isMonitoring ? "● AI SURVEILLANCE ACTIVE" : "⏸ AI IN STANDBY"}
               </span>
-              <span>FPS: ~30</span>
+              <span className="bg-black/70 px-1.5 py-0.5 rounded text-emerald-400">
+                FPS: ~30
+              </span>
             </div>
           </div>
 
-          {/* Quick Corner Snap Controls (show on hover) */}
-          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/90 p-1 rounded-lg border border-slate-700 pointer-events-auto">
+          {/* Quick Click-to-Start Overlay if Not Monitoring */}
+          {!isMonitoring && onStart && (
+            <div 
+              onClick={(e) => { e.stopPropagation(); onStart(); }}
+              className="absolute inset-0 bg-black/40 hover:bg-black/20 transition flex items-center justify-center cursor-pointer pointer-events-auto"
+            >
+              <button className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1 shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-400/30 transition">
+                <Sparkles size={11} /> Start AI Surveillance
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Snap Coordinates Helper Buttons */}
+      {!minimized && (
+        <div className="p-2 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between text-[10px] text-slate-400">
+          <span>Dock Corner:</span>
+          <div className="flex items-center gap-1">
             <button onClick={() => snapTo('TL')} className="p-1 hover:bg-slate-800 rounded text-slate-300" title="Snap to Top-Left">
               <CornerUpLeft size={11} />
             </button>
@@ -292,6 +314,19 @@ export const FloatingProctorCamera: React.FC<FloatingProctorCameraProps> = ({
               <CornerDownRight size={11} />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Quick Action when not monitoring */}
+      {!isMonitoring && onStart && (
+        <div className="p-2 bg-slate-900 border-t border-slate-800">
+          <button
+            onClick={(e) => { e.stopPropagation(); onStart(); }}
+            className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 transition active:scale-95 animate-pulse"
+          >
+            <Sparkles size={13} />
+            Start AI Surveillance
+          </button>
         </div>
       )}
 
