@@ -1,44 +1,174 @@
-name: CI - AI Examination Surveillance Frontend
+name: AI Examination Surveillance (Live Cloud Runner)
 
 on:
+  workflow_dispatch:
+    inputs:
+      duration_minutes:
+        description: "Surveillance session duration in minutes (max 360)"
+        required: false
+        default: "120"
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
 
 jobs:
-  frontend-build:
-    name: Frontend Lint & Build
+  run-surveillance:
+    name: Run AI Surveillance & Provide Live Access Link
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 360
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
       - name: Set up Node.js 22
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Frontend Dependencies
-        working-directory: ./frontend
-        run: npm ci --legacy-peer-deps
+      - name: Install System Dependencies (OpenCV, MediaPipe, Audio)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgl1 \
+            libglib2.0-0 \
+            portaudio19-dev \
+            libasound2-dev \
+            curl \
+            jq
 
-      - name: Run Linter (oxlint)
-        working-directory: ./frontend
-        run: npm run lint
+      - name: Install Python Backend Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir -r requirements.txt
 
-      - name: Build Production Assets (Vite & TypeScript)
-        working-directory: ./frontend
-        run: npm run build
+      - name: Install Frontend Dependencies & Build Single-Port Bundle
+        run: |
+          cd frontend
+          npm ci --legacy-peer-deps
+          npm run build
+          cd ..
 
-      - name: Upload Production Dist Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: frontend-dist
-          path: frontend/dist/
-          retention-days: 7
+      - name: Install Cloudflare Tunnel Client (cloudflared)
+        run: |
+          curl -sL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /tmp/cloudflared
+          chmod +x /tmp/cloudflared
+          sudo mv /tmp/cloudflared /usr/local/bin/cloudflared
+
+      - name: Launch AI Surveillance & Generate Public Access Link
+        run: |
+          # Create runtime directories
+          mkdir -p logs data/database data/screenshots backend/data/screenshots
+          
+          # Start Backend on port 8000 in background (serves both API & built React frontend)
+          echo "Starting AI Surveillance backend on port 8000..."
+          python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
+          BACKEND_PID=$!
+
+          # Wait for backend server to respond
+          echo "Waiting for backend server to become ready..."
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:8000 > /dev/null 2>&1; then
+              echo "Backend is live and responding."
+              break
+            fi
+            sleep 1
+          done
+
+          # Launch Cloudflare Tunnel
+          echo "Starting Cloudflare public tunnel..."
+          cloudflared tunnel --url http://127.0.0.1:8000 --no-autoupdate > /tmp/cloudflared.log 2>&1 &
+          CLOUDFLARED_PID=$!
+
+          # Wait for Cloudflare URL
+          TUNNEL_URL=""
+          for i in {1..30}; do
+            TUNNEL_URL=$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' /tmp/cloudflared.log | head -n 1 || true)
+            if [ -n "$TUNNEL_URL" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          # Launch Localtunnel as a secondary backup tunnel
+          npx -y localtunnel --port 8000 > /tmp/localtunnel.log 2>&1 &
+          sleep 4
+          BACKUP_URL=$(grep -oE 'https://[a-zA-Z0-9-]+\.loca\.lt' /tmp/localtunnel.log | head -n 1 || true)
+
+          if [ -z "$TUNNEL_URL" ]; then
+            TUNNEL_URL="$BACKUP_URL"
+          fi
+
+          echo "========================================================================"
+          echo "🚀 AI EXAMINATION SURVEILLANCE IS LIVE!"
+          echo "👉 PRIMARY ACCESS LINK: $TUNNEL_URL"
+          if [ -n "$BACKUP_URL" ] && [ "$BACKUP_URL" != "$TUNNEL_URL" ]; then
+            echo "👉 BACKUP ACCESS LINK:  $BACKUP_URL"
+          fi
+          echo "========================================================================"
+
+          # GitHub Actions Notice banner visible at the top of the run page
+          echo "::notice title=🚀 Live Surveillance Access Link::$TUNNEL_URL"
+
+          # Write rich Markdown to GitHub Step Summary (rendered on the Actions Run Summary)
+          cat << 'EOF' > /tmp/summary_header.md
+          # 🛡️ AI Online Examination Surveillance Platform is LIVE!
+
+          ### 📱 Click or Tap the Link Below to Open Surveillance:
+          EOF
+
+          cat /tmp/summary_header.md >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🌐 [👉 CLICK HERE TO OPEN SURVEILLANCE 👈]($TUNNEL_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Direct URL:** \`$TUNNEL_URL\`" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -n "$BACKUP_URL" ] && [ "$BACKUP_URL" != "$TUNNEL_URL" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Backup URL:** \`$BACKUP_URL\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+
+          ---
+          ### 📋 Surveillance Features Active
+          - 🎥 **Real-time AI Video Feed**: Automated Face & Cheating Detection active.
+          - 📝 **Candidate Examination Portal**: Live exam room & question simulator active.
+          - 📊 **Live Proctor Dashboard**: Real-time violation counters & warning notifications active.
+          - 📱 **Mobile & Desktop Friendly**: Tap the link on your phone, tablet, or laptop.
+
+          ### 🛑 How to Stop
+          When your examination or testing session is finished, click the red **"Cancel run"** button at the top right of this GitHub Action run.
+          EOF
+
+          # Determine duration
+          DURATION_MINUTES="${{ github.event.inputs.duration_minutes || 120 }}"
+          TOTAL_SECONDS=$((DURATION_MINUTES * 60))
+          ELAPSED=0
+
+          echo "Surveillance session running for up to $DURATION_MINUTES minutes. Keeping tunnel alive..."
+
+          # Heartbeat keep-alive loop
+          while [ $ELAPSED -lt $TOTAL_SECONDS ]; do
+            sleep 30
+            ELAPSED=$((ELAPSED + 30))
+            REMAINING=$(( (TOTAL_SECONDS - ELAPSED) / 60 ))
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🟢 Surveillance active ($REMAINING min remaining) | URL: $TUNNEL_URL"
+
+            # Check if backend crashed
+            if ! kill -0 $BACKEND_PID 2>/dev/null; then
+              echo "❌ Backend server stopped unexpectedly! Checking logs:"
+              cat logs/application.log 2>/dev/null || true
+              cat logs/errors.log 2>/dev/null || true
+              exit 1
+            fi
+          done
+
+          echo "Session duration limit ($DURATION_MINUTES minutes) reached. Shutting down."

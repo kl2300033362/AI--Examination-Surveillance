@@ -10,8 +10,11 @@ async def test_full_connectivity():
 
     async with httpx.AsyncClient() as client:
         # 1. Frontend Web Check
-        print("\n1. Checking Frontend (http://127.0.0.1:5173)...")
-        fe_res = await client.get("http://127.0.0.1:5173")
+        print("\n1. Checking Frontend (http://localhost:5173 or http://127.0.0.1:5173)...")
+        try:
+            fe_res = await client.get("http://localhost:5173")
+        except Exception:
+            fe_res = await client.get("http://127.0.0.1:5173")
         assert fe_res.status_code == 200, f"Frontend failed: {fe_res.status_code}"
         print("   [OK] Frontend is up and returning HTTP 200 (Vite React app ready).")
 

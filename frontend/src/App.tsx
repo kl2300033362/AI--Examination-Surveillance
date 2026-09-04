@@ -21,9 +21,28 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-// Adjust for actual backend host/port
-const BACKEND_URL = 'http://127.0.0.1:8000';
-const WS_URL = 'ws://127.0.0.1:8000/api/monitoring/ws';
+// Dynamic backend and websocket URLs for local and cloud runner / tunnel deployment
+const getBackendUrl = () => {
+  const envUrl = (import.meta as any).env?.VITE_BACKEND_URL;
+  if (envUrl) return envUrl;
+  if (typeof window !== 'undefined' && window.location.port !== '5173') {
+    return window.location.origin;
+  }
+  return 'http://127.0.0.1:8000';
+};
+
+const getWsUrl = () => {
+  const envWs = (import.meta as any).env?.VITE_WS_URL;
+  if (envWs) return envWs;
+  if (typeof window !== 'undefined' && window.location.port !== '5173') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/api/monitoring/ws`;
+  }
+  return 'ws://127.0.0.1:8000/api/monitoring/ws';
+};
+
+const BACKEND_URL = getBackendUrl();
+const WS_URL = getWsUrl();
 
 interface NavButtonProps {
   id: string;

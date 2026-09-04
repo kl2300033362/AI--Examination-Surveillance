@@ -89,6 +89,30 @@ app.include_router(routes_monitoring.router, prefix="/api/monitoring", tags=["mo
 app.include_router(routes_status.router, prefix="/api/status", tags=["status"])
 app.include_router(routes_events.router, prefix="/api/events", tags=["events"])
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to AI Guardian API"}
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Mount frontend dist if it exists (for unified single-port & cloud runner deployment)
+frontend_dist = os.path.join(BASE_DIR, "frontend", "dist")
+if os.path.exists(frontend_dist):
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        if full_path.startswith("api") or full_path in ["docs", "openapi.json", "redoc"]:
+            return None
+        file_path = os.path.join(frontend_dist, full_path)
+        if file_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
+else:
+    @app.get("/")
+    def read_root():
+        return {"message": "Welcome to AI Guardian API"}
+

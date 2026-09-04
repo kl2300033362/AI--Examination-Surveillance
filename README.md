@@ -47,11 +47,19 @@ SYSTEM_LOCK_ENABLED=false
 ```
 
 ## Running the Application
-### Option A: Using Quickstart Scripts
+
+### Option A: Cloud Runner via GitHub Actions (Zero Local Setup)
+Run the entire surveillance suite directly inside GitHub Actions without needing to install anything on your machine:
+1. Go to the repository **[Actions](https://github.com/kl2300033362/AI--Examination-Surveillance/actions)** tab on GitHub.
+2. Select **AI Examination Surveillance (Live Cloud Runner)**.
+3. Click **Run workflow** (or view any currently running workflow).
+4. In the run summary and notice header, **tap on the live public access link** to open the surveillance portal on any phone, tablet, or PC!
+
+### Option B: Using Quickstart Scripts (Local)
 - **Windows:** Double-click or run `start.bat`
 - **Linux / macOS:** Run `./start.sh`
 
-### Option B: Using Docker Compose
+### Option C: Using Docker Compose
 Run the entire platform in a container with one command:
 ```bash
 docker compose up --build
@@ -60,7 +68,7 @@ Access the application:
 - Candidate Exam & Proctor Dashboard: `http://localhost:5173`
 - AI Backend API & Documentation: `http://localhost:8000/docs`
 
-### Option C: Manual Launch
+### Option D: Manual Launch
 **Terminal 1 (Backend):**
 ```bash
 cd backend
